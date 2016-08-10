@@ -21,7 +21,7 @@ Did you spend years of your life in a dark cave below the mountain building that
 This package allows you to do parametric inference using Monte-Carlo derived extended unbinned likelihood functions. It lets you make likelihood functions which measure agreement between data and Monte Carlos with different settings: you choose which settings to vary (which parameters the likelihood functions has) and in which space the agreement is measured. For more information, please see `the documentation in this note
 <https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:aalbers:statspackage_architecture>`_ and the `examples in the notebooks folder <https://github.com/XENON1T/wimpy/tree/master/notebooks>`_.
 
-All of the hard work is done by `blipflip <https://github.com/JelleAalbers/blueice`_; this only contains the code necessary to make blueice work with a simple Monte Carlo of the XENON1T experiment. Much of this is derived or shamelessly "borrowed" from other sources:
+All of the hard work is done by `blueice <https://github.com/JelleAalbers/blueice>`_; this only contains the code necessary to make blueice work with a simple Monte Carlo of the XENON1T experiment. Much of this is derived or shamelessly "borrowed" from other sources:
 
 - Andrew's maximum-gap limit setting code, used for the XENON100 max-gap cross checks.
 - Chris' wimpstat repository, used for the XENON100 S2-only limit setting (but no longer available?)
