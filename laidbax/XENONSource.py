@@ -1,7 +1,7 @@
 import numpy as np
 
-from blipflip.source import MonteCarloSource
-from blipflip.utils import InterpolateAndExtrapolate1D
+from blueice.source import MonteCarloSource
+from blueice.utils import InterpolateAndExtrapolate1D
 from multihist import Hist1d
 
 class XENONSource(MonteCarloSource):
