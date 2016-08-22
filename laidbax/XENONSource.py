@@ -6,33 +6,34 @@ from multihist import Hist1d
 
 class XENONSource(MonteCarloSource):
     """A Source in a XENON-style experiment"""
-    spatial_distribution = 'uniform'
-    recoil_type = 'nr'
     energy_distribution = None      # Histdd of rate /kg /keV /day.
 
-    def setup(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Turn the energy spectrum from two arrays into a histogram, so we can sample it.
         # We average the rates in between the points provided
-        es, rates = self.energy_distribution
+        self.config.setdefault('spatial_distribution', 'uniform')
+        es, rates = self.config['energy_distribution']
         self.energy_distribution = Hist1d(bins=es)
         self.energy_distribution.histogram = 0.5 * (rates[1:] + rates[:-1])
 
         # Compute the integrated event rate (in events / day)
         # This includes all events that produce a recoil; many will probably be out of range of the analysis space.
         h = self.energy_distribution
-        self.events_per_day = h.histogram.sum() * self.model.config['fiducial_mass'] * (h.bin_edges[1] - h.bin_edges[0])
+        self.events_per_day = h.histogram.sum() * self.config['fiducial_mass'] * (h.bin_edges[1] - h.bin_edges[0])
 
         # The yield functions are all interpolated in log10(energy) space,
         # Since that's where they are usually plotted in... and curve traced from.
         # The yield points are clipped to 0: a few negative values may have slipped in while curve tracing.
-        self.yield_functions = {k: InterpolateAndExtrapolate1D(np.log10(self.model.config[k][0]),
-                                                               np.clip(self.model.config[k][1], 0, float('inf')))
+        self.yield_functions = {k: InterpolateAndExtrapolate1D(np.log10(self.config[k][0]),
+                                                               np.clip(self.config[k][1], 0, float('inf')))
                                 for k in ('leff', 'qy', 'er_photon_yield')}
+        self.compute_pdf()
 
     def yield_at(self, energies, recoil_type, quantum_type):
         """Return the yield in quanta/kev for the given energies (numpy array, in keV),
         recoil type (string, 'er' or 'nr') and quantum type (string, 'photon' or 'electron')"""
-        c = self.model.config
+        c = self.config
         log10e = np.log10(energies)
         if quantum_type not in ('electron', 'photon'):
             raise ValueError("Invalid quantum type %s" % quantum_type)
@@ -74,7 +75,7 @@ class XENONSource(MonteCarloSource):
 
     def simulate(self, n_events):
         """Simulate n_events from this source."""
-        c = self.model.config
+        c = self.config
 
         # Store everything in a structured array:
         d = np.zeros(n_events, dtype=[('energy', np.float),
@@ -104,7 +105,7 @@ class XENONSource(MonteCarloSource):
         d['energy'] = self.energy_distribution.get_random(n_events)
 
         # Sample the positions and relative light yields
-        if self.spatial_distribution == 'uniform':
+        if c['spatial_distribution'] == 'uniform':
             d['r2'] = np.random.uniform(0, c['fiducial_volume_radius']**2, n_events)
             d['theta'] = np.random.uniform(0, 2*np.pi, n_events)
             d['z'] = np.random.uniform(c['ficudial_volume_zmin'], c['ficudial_volume_zmax'], size=n_events)
@@ -127,10 +128,10 @@ class XENONSource(MonteCarloSource):
         bad_events = n_quanta < 1
         n_quanta = np.clip(n_quanta, 1, float('inf'))
 
-        p_becomes_photon = d['energy'] * self.yield_at(d['energy'], self.recoil_type, 'photon') / n_quanta
-        p_becomes_electron = d['energy'] * self.yield_at(d['energy'], self.recoil_type, 'electron') / n_quanta
+        p_becomes_photon = d['energy'] * self.yield_at(d['energy'], c['recoil_type'], 'photon') / n_quanta
+        p_becomes_electron = d['energy'] * self.yield_at(d['energy'], c['recoil_type'], 'electron') / n_quanta
 
-        if self.recoil_type == 'er':
+        if c['recoil_type'] == 'er':
             # Apply extra recombination fluctuation (NEST tritium paper / Atilla Dobii's thesis)
             p_becomes_electron = np.random.normal(p_becomes_electron,
                                                   p_becomes_electron * c['recombination_fluctuation'],
@@ -139,7 +140,7 @@ class XENONSource(MonteCarloSource):
             p_becomes_photon = 1 - p_becomes_electron
             n_quanta = np.round(n_quanta).astype(np.int)
 
-        elif self.recoil_type == 'nr':
+        elif c['recoil_type'] == 'nr':
             # For NR some quanta get lost in heat.
             # Remove them and rescale the p's so we can use the same code as for ERs after this.
             p_becomes_detectable = p_becomes_photon + p_becomes_electron
@@ -150,7 +151,7 @@ class XENONSource(MonteCarloSource):
             n_quanta = np.random.binomial(n_quanta, p_becomes_detectable)
 
         else:
-            raise ValueError('Bad recoil type %s' % self.recoil_type)
+            raise ValueError('Bad recoil type %s' % c['recoil_type'])
 
         d['photons_produced'] = np.random.binomial(n_quanta, p_becomes_photon)
         d['electrons_produced'] = n_quanta - d['photons_produced']
