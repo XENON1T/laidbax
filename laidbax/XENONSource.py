@@ -4,6 +4,7 @@ from blueice.source import MonteCarloSource
 from blueice.utils import InterpolateAndExtrapolate1D
 from multihist import Hist1d
 
+
 class XENONSource(MonteCarloSource):
     """A Source in a XENON-style experiment"""
     energy_distribution = None      # Histdd of rate /kg /keV /day.
@@ -28,7 +29,6 @@ class XENONSource(MonteCarloSource):
         self.yield_functions = {k: InterpolateAndExtrapolate1D(np.log10(self.config[k][0]),
                                                                np.clip(self.config[k][1], 0, float('inf')))
                                 for k in ('leff', 'qy', 'er_photon_yield')}
-        self.compute_pdf()
 
     def yield_at(self, energies, recoil_type, quantum_type):
         """Return the yield in quanta/kev for the given energies (numpy array, in keV),
