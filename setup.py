@@ -10,7 +10,7 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 requirements = open('requirements.txt').read().splitlines()
 
-setup(name='wimpy',
+setup(name='laidbax',
       version='0.2.0',
       description='Statistical XENON1T Analysis for the lazy analyst.',
       long_description=readme + '\n\n' + history,
