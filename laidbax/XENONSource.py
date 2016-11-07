@@ -9,31 +9,37 @@ class XENONSource(MonteCarloSource):
     """A Source in a XENON-style experiment"""
     energy_distribution = None      # Histdd of rate /kg /keV /day.
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config, *args, **kwargs):
+        # Defaults for config settings
+        config.setdefault('spatial_distribution', 'uniform')
+        config['cache_attributes'] = config.get('cache_attributes', []) + ['energy_spectrum']
+        super().__init__(config, *args, **kwargs)
+
+    def compute_pdf(self):
         # Turn the energy spectrum from two arrays into a histogram, so we can sample it.
         # We average the rates in between the points provided
-        self.config.setdefault('spatial_distribution', 'uniform')
         es, rates = self.config['energy_distribution']
-        self.energy_distribution = Hist1d(bins=es)
+        h = self.energy_distribution = Hist1d(bins=es)
         self.energy_distribution.histogram = 0.5 * (rates[1:] + rates[:-1])
 
         # Compute the integrated event rate (in events / day)
         # This includes all events that produce a recoil; many will probably be out of range of the analysis space.
-        h = self.energy_distribution
         self.events_per_day = h.histogram.sum() * self.config['fiducial_mass'] * (h.bin_edges[1] - h.bin_edges[0])
-
-        # The yield functions are all interpolated in log10(energy) space,
-        # Since that's where they are usually plotted in... and curve traced from.
-        # The yield points are clipped to 0: a few negative values may have slipped in while curve tracing.
-        self.yield_functions = {k: InterpolateAndExtrapolate1D(np.log10(self.config[k][0]),
-                                                               np.clip(self.config[k][1], 0, float('inf')))
-                                for k in ('leff', 'qy', 'er_photon_yield')}
 
     def yield_at(self, energies, recoil_type, quantum_type):
         """Return the yield in quanta/kev for the given energies (numpy array, in keV),
         recoil type (string, 'er' or 'nr') and quantum type (string, 'photon' or 'electron')"""
         c = self.config
+
+        # The yield functions are all interpolated in log10(energy) space,
+        # Since that's where they are usually plotted in... and curve traced from.
+        # The yield points are clipped to 0: a few negative values may have slipped in while curve tracing.
+        if not hasattr(self, 'yield_functions'):
+            self.yield_functions = {k: InterpolateAndExtrapolate1D(np.log10(self.config[k][0]),
+                                                                   np.clip(self.config[k][1], 0, float('inf')))
+                                    for k in ('leff', 'qy', 'er_photon_yield')}
+
+
         log10e = np.log10(energies)
         if quantum_type not in ('electron', 'photon'):
             raise ValueError("Invalid quantum type %s" % quantum_type)
