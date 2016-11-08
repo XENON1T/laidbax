@@ -12,7 +12,7 @@ class XENONSource(MonteCarloSource):
     def __init__(self, config, *args, **kwargs):
         # Defaults for config settings
         config.setdefault('spatial_distribution', 'uniform')
-        config['cache_attributes'] = config.get('cache_attributes', []) + ['energy_spectrum']
+        config['cache_attributes'] = config.get('cache_attributes', []) + ['energy_distribution']
         super().__init__(config, *args, **kwargs)
 
     def compute_pdf(self):
@@ -26,6 +26,8 @@ class XENONSource(MonteCarloSource):
         # This includes all events that produce a recoil; many will probably be out of range of the analysis space.
         self.events_per_day = h.histogram.sum() * self.config['fiducial_mass'] * (h.bin_edges[1] - h.bin_edges[0])
 
+        super().compute_pdf()
+
     def yield_at(self, energies, recoil_type, quantum_type):
         """Return the yield in quanta/kev for the given energies (numpy array, in keV),
         recoil type (string, 'er' or 'nr') and quantum type (string, 'photon' or 'electron')"""
@@ -38,7 +40,6 @@ class XENONSource(MonteCarloSource):
             self.yield_functions = {k: InterpolateAndExtrapolate1D(np.log10(self.config[k][0]),
                                                                    np.clip(self.config[k][1], 0, float('inf')))
                                     for k in ('leff', 'qy', 'er_photon_yield')}
-
 
         log10e = np.log10(energies)
         if quantum_type not in ('electron', 'photon'):
