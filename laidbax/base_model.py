@@ -106,6 +106,7 @@ simplified_config.update(dict(
     default_source_class=SimplifiedXENONSource,
     er_p_electron_a=-0.44,
     er_p_electron_b=0.76,
+    er_p_electron_min=0.23,
     p_er_electron_fluctuation=0.03,
     nr_p_electron_a=-0.2,
     nr_p_electron_b=0.6,

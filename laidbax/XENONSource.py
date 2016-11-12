@@ -62,20 +62,28 @@ class XENONSource(MonteCarloSource):
         raise NotImplementedError
 
 
+def _f(e, a, b, min_y=0):
+    return np.clip(a * np.log10(e) + b, min_y, 1)
+
+
 class SimplifiedXENONSource(XENONSource):
 
     def quanta_to_photons_electrons(self, energies, n_quanta):
         c = self.config
-        if c['recoil_type'] == 'nr':
+        rt = c['recoil_type']
+        if rt == 'nr':
             # Account for quanta getting lost as heat
-            p_detectable = c['nr_p_detectable_a'] * np.log10(energies) + c['nr_p_detectable_b']
+            p_detectable = _f(energies, c['nr_p_detectable_a'], c['nr_p_detectable_b'])
             n_quanta = np.random.binomial(n_quanta, p_detectable)
 
         # Simple lin-log model of probability of becoming an electron
-        p_becomes_electron = c[c['recoil_type'] + '_p_electron_a'] * np.log10(energies) + c[c['recoil_type'] + '_p_electron_b']
+        p_becomes_electron = _f(energies,
+                                c[rt + '_p_electron_a'],
+                                c[rt + '_p_electron_b'],
+                                c.get(rt + '_p_electron_min', 0))
 
         # Extra fluctuation (according to LUX due to fluctuation in recombination probability)
-        fluctuation = c['p_%s_electron_fluctuation' % c['recoil_type']]
+        fluctuation = c['p_%s_electron_fluctuation' % rt]
         if fluctuation != 0:
             p_becomes_electron = np.random.normal(p_becomes_electron, fluctuation)
         p_becomes_electron = np.clip(p_becomes_electron, 0, 1)
