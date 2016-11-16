@@ -78,9 +78,8 @@ config = dict(
     fiducial_mass=1000,  # kg. np.pi * rmax**2 * (zmax - zmin) * density?
     e_lifetime=1 * units.ms,
     v_drift=1.5 * units.km / units.s,
-    s2_gain=26,
+    s2_gain=20,
     ph_detection_efficiency=0.118,
-    drift_field=500 * units.V / units.cm,
     pmt_gain_width=0.5,  # Width (in photoelectrons) of the single-photoelectron area spectrum
     double_pe_emission_probability=0.12,  # Probability for a photon detected by a PMT to produce two photoelectrons.
 
@@ -90,7 +89,7 @@ config = dict(
     # Note z is negative, so the maximum z is actually the z of the top boundary of the fiducial volume
     ficudial_volume_zmax=- 0.05 * pax_config['DEFAULT']['tpc_length'],
     ficudial_volume_zmin=- 0.95 * pax_config['DEFAULT']['tpc_length'],
-    s1_relative_ly_map='s1_rel_ly_pax5.1.pkl',
+    s1_relative_ly_map='s1_lce_rz_precomputed_kr83m_sep29_doublez.pkl',
 
     # S1/S2 generation parameters
     base_quanta_yield=73,  # NEST's basic quanta yield, xenon:xenon1t:sim:notes:marco:conversion-ed-to-s1-s2
