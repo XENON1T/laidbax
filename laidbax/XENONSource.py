@@ -97,13 +97,15 @@ class SimplifiedXENONSource(XENONSource):
         """Utility function which returns the mean location in (cs1, cs2) at a given energy"""
         # TODO: remove code duplication!
         c = self.config
+        rt = c['recoil_type']
         nq_mean = c['base_quanta_yield'] * energy
-        if c['recoil_type'] == 'nr':
+        if rt == 'nr':
             nq_mean *= _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['reference_energy'])
         ne_mean = nq_mean * _f(energy,
-                               c['%s_p_electron_a' % c['recoil_type']],
+                               c[rt + '_p_electron_a'],
+                               c[rt + '_p_electron_b'],
                                c['reference_energy'],
-                               c['%s_p_electron_b' % c['recoil_type']])
+                               c.get(rt + '_p_electron_min', 0))
         nph_mean = nq_mean - ne_mean
         cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1)
         cs1_mean = nph_mean * c['ph_detection_efficiency']
