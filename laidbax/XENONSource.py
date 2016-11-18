@@ -62,8 +62,8 @@ class XENONSource(MonteCarloSource):
         raise NotImplementedError
 
 
-def _f(e, a, b, min_y=0):
-    return np.clip(a * np.log10(e) + b, min_y, 1)
+def _f(e, a, b, reference_energy, min_y=0):
+    return np.clip(a * np.log10(e / reference_energy) + b, min_y, 1)
 
 
 class SimplifiedXENONSource(XENONSource):
@@ -73,13 +73,14 @@ class SimplifiedXENONSource(XENONSource):
         rt = c['recoil_type']
         if rt == 'nr':
             # Account for quanta getting lost as heat
-            p_detectable = _f(energies, c['nr_p_detectable_a'], c['nr_p_detectable_b'])
+            p_detectable = _f(energies, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['reference_energy'])
             n_quanta = np.random.binomial(n_quanta, p_detectable)
 
         # Simple lin-log model of probability of becoming an electron
         p_becomes_electron = _f(energies,
                                 c[rt + '_p_electron_a'],
                                 c[rt + '_p_electron_b'],
+                                c['reference_energy'],
                                 c.get(rt + '_p_electron_min', 0))
 
         # Extra fluctuation (according to LUX due to fluctuation in recombination probability)
@@ -91,6 +92,22 @@ class SimplifiedXENONSource(XENONSource):
         # Sample the actual numbers binomially
         electrons_produced = np.random.binomial(n_quanta, p=p_becomes_electron)
         return n_quanta - electrons_produced, electrons_produced
+
+    def mean_signal(self, energy):
+        """Utility function which returns the mean location in (cs1, cs2) at a given energy"""
+        # TODO: remove code duplication!
+        c = self.config
+        nq_mean = c['base_quanta_yield'] * energy
+        if c['recoil_type'] == 'nr':
+            nq_mean *= _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['reference_energy'])
+        ne_mean = nq_mean * _f(energy,
+                               c['%s_p_electron_a' % c['recoil_type']],
+                               c['reference_energy'],
+                               c['%s_p_electron_b' % c['recoil_type']])
+        nph_mean = nq_mean - ne_mean
+        cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1)
+        cs1_mean = nph_mean * c['ph_detection_efficiency']
+        return cs1_mean, cs2_mean
 
 
 
