@@ -87,8 +87,8 @@ config = dict(
     n_location_samples=int(1e5),  # Number of samples to take for the source positions (for light yield etc, temporary?)
     fiducial_volume_radius=pax_config['DEFAULT']['tpc_radius'] * 0.9,
     # Note z is negative, so the maximum z is actually the z of the top boundary of the fiducial volume
-    ficudial_volume_zmax=- 0.05 * pax_config['DEFAULT']['tpc_length'],
-    ficudial_volume_zmin=- 0.95 * pax_config['DEFAULT']['tpc_length'],
+    fiducial_volume_zmax=- 0.05 * pax_config['DEFAULT']['tpc_length'],
+    fiducial_volume_zmin=- 0.95 * pax_config['DEFAULT']['tpc_length'],
     s1_relative_ly_map='s1_lce_rz_precomputed_kr83m_sep29_doublez.pkl',
 
     # S1/S2 generation parameters
