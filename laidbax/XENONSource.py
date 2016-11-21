@@ -69,6 +69,10 @@ def _f(e, a, b, reference_energy, min_y=0):
 class SimplifiedXENONSource(XENONSource):
 
     def quanta_to_photons_electrons(self, energies, n_quanta):
+        if not isinstance(energies, np.ndarray):
+            energies = np.ones(1) * energies
+            n_quanta = np.ones(1) * n_quanta
+
         c = self.config
         rt = c['recoil_type']
         if rt == 'nr':
@@ -90,7 +94,8 @@ class SimplifiedXENONSource(XENONSource):
         p_becomes_electron = np.clip(p_becomes_electron, 0, 1)
 
         # Sample the actual numbers binomially
-        electrons_produced = np.random.binomial(n_quanta, p=p_becomes_electron)
+        # The size argument is explicitly needed to always get an array back (even when simulating one event)
+        electrons_produced = np.random.binomial(n_quanta, p=p_becomes_electron, size=len(energies))
         return n_quanta - electrons_produced, electrons_produced
 
     def mean_signal(self, energy):
