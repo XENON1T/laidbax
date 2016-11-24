@@ -113,7 +113,7 @@ class SimplifiedXENONSource(XENONSource):
                                c.get(rt + '_p_electron_min', 0))
         nph_mean = nq_mean - ne_mean
         cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1)
-        cs1_mean = nph_mean * c['ph_detection_efficiency'] * c['double_pe_emission_probability']
+        cs1_mean = nph_mean * c['ph_detection_efficiency'] * (1 + c['double_pe_emission_probability'])
         return cs1_mean, cs2_mean
 
 
