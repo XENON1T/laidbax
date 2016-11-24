@@ -77,14 +77,14 @@ class SimplifiedXENONSource(XENONSource):
         rt = c['recoil_type']
         if rt == 'nr':
             # Account for quanta getting lost as heat
-            p_detectable = _f(energies, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['reference_energy'])
+            p_detectable = _f(energies, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c[rt + '_reference_energy'])
             n_quanta = np.random.binomial(n_quanta, p_detectable)
 
         # Simple lin-log model of probability of becoming an electron
         p_becomes_electron = _f(energies,
                                 c[rt + '_p_electron_a'],
                                 c[rt + '_p_electron_b'],
-                                c['reference_energy'],
+                                c[rt + '_reference_energy'],
                                 c.get(rt + '_p_electron_min', 0))
 
         # Extra fluctuation (according to LUX due to fluctuation in recombination probability)
@@ -105,17 +105,16 @@ class SimplifiedXENONSource(XENONSource):
         rt = c['recoil_type']
         nq_mean = c['base_quanta_yield'] * energy
         if rt == 'nr':
-            nq_mean *= _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['reference_energy'])
+            nq_mean *= _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c[rt + '_reference_energy'])
         ne_mean = nq_mean * _f(energy,
                                c[rt + '_p_electron_a'],
                                c[rt + '_p_electron_b'],
-                               c['reference_energy'],
+                               c[rt + '_reference_energy'],
                                c.get(rt + '_p_electron_min', 0))
         nph_mean = nq_mean - ne_mean
         cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1)
-        cs1_mean = nph_mean * c['ph_detection_efficiency']
+        cs1_mean = nph_mean * c['ph_detection_efficiency'] * c['double_pe_emission_probability']
         return cs1_mean, cs2_mean
-
 
 
 class RegularXENONSource(XENONSource):

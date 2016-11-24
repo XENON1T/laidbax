@@ -103,11 +103,13 @@ config = dict(
 simplified_config = deepcopy(config)
 simplified_config.update(dict(
     default_source_class=SimplifiedXENONSource,
-    reference_energy=10,
+    er_reference_energy=10,
     er_p_electron_a=-0.44,
     er_p_electron_b=0.32,
     er_p_electron_min=0.23,
     p_er_electron_fluctuation=0.03,
+
+    nr_reference_energy=50,
     nr_p_electron_a=-0.2,
     nr_p_electron_b=0.4,
     nr_p_detectable_a=0.04,
