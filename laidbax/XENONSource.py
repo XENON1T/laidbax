@@ -101,7 +101,7 @@ class SimplifiedXENONSource(XENONSource):
         return _f(energy,
                   c[rt + '_p_electron_a'],
                   c[rt + '_p_electron_b'],
-                  c[rt + 'reference_energy'],
+                  c[rt + '_reference_energy'],
                   c.get(rt + '_p_electron_min', 0))
 
     def p_detectable(self, energy):
