@@ -24,7 +24,7 @@ nr_ignore_settings = ['er_photon_yield', 'recombination_fluctuation',
 
 # Ignore these if you're an ER source:
 er_ignore_settings = ['leff', 'qy', 'nr_photon_yield_field_quenching',
-                      'p_nr_electron_a', 'p_nr_electron_b',
+                      'p_nr_electron_a', 'p_nr_electron_b', 'p_nr_electron_fluctuation',
                       'p_nr_detectable_a', 'p_nr_detectable_b']
 
 config = dict(
