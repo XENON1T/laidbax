@@ -32,6 +32,7 @@ class XENONSource(MonteCarloSource):
 
     def simulate(self, n_events):
         """Simulate n_events from this source."""
+        n_events = int(n_events)
         c = self.config
 
         energies = self.energy_distribution.get_random(n_events)
@@ -69,6 +70,10 @@ def _f(e, a, b, reference_energy, min_y=0):
 class SimplifiedXENONSource(XENONSource):
 
     def quanta_to_photons_electrons(self, energies, n_quanta):
+        if not isinstance(energies, np.ndarray):
+            energies = np.ones(1) * energies
+            n_quanta = np.ones(1) * n_quanta
+
         c = self.config
         rt = c['recoil_type']
         if rt == 'nr':
@@ -86,7 +91,8 @@ class SimplifiedXENONSource(XENONSource):
         p_becomes_electron = np.clip(p_becomes_electron, 0, 1)
 
         # Sample the actual numbers binomially
-        electrons_produced = np.random.binomial(n_quanta, p=p_becomes_electron)
+        # The size argument is explicitly needed to always get an array back (even when simulating one event)
+        electrons_produced = np.random.binomial(n_quanta, p=p_becomes_electron, size=len(energies))
         return n_quanta - electrons_produced, electrons_produced
 
     def p_electron(self, energy):
@@ -95,13 +101,13 @@ class SimplifiedXENONSource(XENONSource):
         return _f(energy,
                   c[rt + '_p_electron_a'],
                   c[rt + '_p_electron_b'],
-                  c['reference_energy'],
+                  c[rt + 'reference_energy'],
                   c.get(rt + '_p_electron_min', 0))
 
     def p_detectable(self, energy):
         c = self.config
         assert c['recoil_type'] == 'nr'
-        return _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['reference_energy'])
+        return _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['nr_reference_energy'])
 
     def mean_signal(self, energy):
         """Utility function which returns the mean location in (cs1, cs2) at a given energy"""

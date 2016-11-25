@@ -57,7 +57,7 @@ def simulate_signals(config, n_photons, n_electrons, energies=None):
     if c.get('spatial_distribution', 'uniform') == 'uniform':
         d['r2'] = np.random.uniform(0, c['fiducial_volume_radius'] ** 2, n_events)
         d['theta'] = np.random.uniform(0, 2 * np.pi, n_events)
-        d['z'] = np.random.uniform(c['ficudial_volume_zmin'], c['ficudial_volume_zmax'], size=n_events)
+        d['z'] = np.random.uniform(c['fiducial_volume_zmin'], c['fiducial_volume_zmax'], size=n_events)
         rel_lys = c['s1_relative_ly_map'].lookup(d['r2'], d['z'])
     else:
         raise NotImplementedError("Only uniform sources supported for now...")
