@@ -88,7 +88,8 @@ def simulate_signals(config, n_photons, n_electrons, energies=None):
     # p_electron_detected is known exactly (since it only depends on the electron lifetime)
     s1_correction = c['ph_detection_efficiency'] / d['p_photon_detected']
     d['cs1'] = d['s1'] * s1_correction
-    d['cs2'] = d['s2'] / d['p_electron_detected']
+    # S2 correction doesn't include extraction efficiency
+    d['cs2'] = d['s2'] / (d['p_electron_detected'] / c.get('electron_extraction_efficiency', 1))
 
     # Remove events without an S1 or S1
     if c.get('require_s1', True):
