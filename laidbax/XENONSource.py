@@ -32,6 +32,7 @@ class XENONSource(MonteCarloSource):
 
     def simulate(self, n_events):
         """Simulate n_events from this source."""
+        n_events = int(n_events)
         c = self.config
 
         energies = self.energy_distribution.get_random(n_events)
@@ -77,15 +78,11 @@ class SimplifiedXENONSource(XENONSource):
         rt = c['recoil_type']
         if rt == 'nr':
             # Account for quanta getting lost as heat
-            p_detectable = _f(energies, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c[rt + '_reference_energy'])
+            p_detectable = self.p_detectable(energies)
             n_quanta = np.random.binomial(n_quanta, p_detectable)
 
         # Simple lin-log model of probability of becoming an electron
-        p_becomes_electron = _f(energies,
-                                c[rt + '_p_electron_a'],
-                                c[rt + '_p_electron_b'],
-                                c[rt + '_reference_energy'],
-                                c.get(rt + '_p_electron_min', 0))
+        p_becomes_electron = self.p_electron(energies)
 
         # Extra fluctuation (according to LUX due to fluctuation in recombination probability)
         fluctuation = c['p_%s_electron_fluctuation' % rt]
@@ -98,22 +95,31 @@ class SimplifiedXENONSource(XENONSource):
         electrons_produced = np.random.binomial(n_quanta, p=p_becomes_electron, size=len(energies))
         return n_quanta - electrons_produced, electrons_produced
 
+    def p_electron(self, energy):
+        c = self.config
+        rt = c['recoil_type']
+        return _f(energy,
+                  c[rt + '_p_electron_a'],
+                  c[rt + '_p_electron_b'],
+                  c[rt + '_reference_energy'],
+                  c.get(rt + '_p_electron_min', 0))
+
+    def p_detectable(self, energy):
+        c = self.config
+        assert c['recoil_type'] == 'nr'
+        return _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['nr_reference_energy'])
+
     def mean_signal(self, energy):
         """Utility function which returns the mean location in (cs1, cs2) at a given energy"""
-        # TODO: remove code duplication!
         c = self.config
         rt = c['recoil_type']
         nq_mean = c['base_quanta_yield'] * energy
         if rt == 'nr':
-            nq_mean *= _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c[rt + '_reference_energy'])
-        ne_mean = nq_mean * _f(energy,
-                               c[rt + '_p_electron_a'],
-                               c[rt + '_p_electron_b'],
-                               c[rt + '_reference_energy'],
-                               c.get(rt + '_p_electron_min', 0))
+            nq_mean *= self.p_detectable(energy)
+        ne_mean = nq_mean * self.p_electron(energy)
         nph_mean = nq_mean - ne_mean
         cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1)
-        cs1_mean = nph_mean * c['ph_detection_efficiency'] * (1 + c['double_pe_emission_probability'])
+        cs1_mean = nph_mean * c['ph_detection_efficiency'] * c['double_pe_emission_probability']
         return cs1_mean, cs2_mean
 
 
