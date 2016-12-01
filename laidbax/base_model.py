@@ -20,12 +20,13 @@ THIS_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe(
 
 # Ignore these if you're an NR source:
 nr_ignore_settings = ['er_photon_yield', 'recombination_fluctuation',
-                      'p_er_electron_a', 'p_er_electron_b', 'p_er_electron_fluctuation']
+                      'er_p_electron_a', 'er_p_electron_b', 'p_er_electron_fluctuation']
 
 # Ignore these if you're an ER source:
 er_ignore_settings = ['leff', 'qy', 'nr_photon_yield_field_quenching',
-                      'p_nr_electron_a', 'p_nr_electron_b', 'p_nr_electron_fluctuation',
-                      'p_nr_detectable_a', 'p_nr_detectable_b']
+                      'p_nr_electron_fluctuation', 'nr_p_electron_a', 'nr_p_electron_b',
+                      'nr_p_detectable_a', 'nr_p_detectable_b',]
+
 
 config = dict(
     default_source_class=RegularXENONSource,
