@@ -13,19 +13,24 @@ from pax import units
 from pax.configuration import load_configuration
 pax_config = load_configuration('XENON1T')
 
-from .XENONSource import RegularXENONSource, SimplifiedXENONSource
+from .XENONSource import RegularXENONSource, SimplifiedXENONSource, PolynomialXENONSource
 
 # Store the directory of this file
 THIS_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
 # Ignore these if you're an NR source:
 nr_ignore_settings = ['er_photon_yield', 'recombination_fluctuation',
+                      'er_poly_order',
                       'er_p_electron_a', 'er_p_electron_b', 'p_er_electron_fluctuation']
+nr_ignore_settings += ['er_p_electron_%d' % i for i in range(10)]
 
 # Ignore these if you're an ER source:
 er_ignore_settings = ['leff', 'qy', 'nr_photon_yield_field_quenching',
+                      'nr_poly_order',
                       'p_nr_electron_fluctuation', 'nr_p_electron_a', 'nr_p_electron_b',
-                      'nr_p_detectable_a', 'nr_p_detectable_b',]
+                      'nr_p_detectable_a', 'nr_p_detectable_b']
+er_ignore_settings += ['nr_p_electron_%d' % i for i in range(10)]
+er_ignore_settings += ['nr_p_detectable_%d' % i for i in range(10)]
 
 
 config = dict(
@@ -116,6 +121,24 @@ simplified_config.update(dict(
     nr_p_detectable_a=0.04,
     nr_p_detectable_b=0.163,
     p_nr_electron_fluctuation=0,
+))
+
+poly_config = deepcopy(config)
+poly_config.update(dict(
+    default_source_class=PolynomialXENONSource,
+    er_reference_energy=7,   # keV
+    er_poly_order=2,         # Order of n means n + 1 terms
+    er_p_electron_0=0.5,     # Value at reference energy
+    er_p_electron_1=-0.3,    # Slope " " "
+    er_p_electron_2=0,       # Second derivative " " "
+    p_er_electron_fluctuation=0.04,
+
+    nr_reference_energy=25,  # keV
+    nr_poly_order=2,         # Order of n means n + 1 terms
+    nr_p_electron_0=0.336,   # Value at reference energy
+    nr_p_electron_1=-0.34,   # Slope " " "
+    nr_p_electron_2=0,       # Second derivative " ' "
+    p_nr_electron_fluctuation=0.02,
 ))
 
 

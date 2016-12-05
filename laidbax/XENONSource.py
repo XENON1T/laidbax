@@ -63,11 +63,7 @@ class XENONSource(MonteCarloSource):
         raise NotImplementedError
 
 
-def _f(e, a, b, reference_energy, min_y=0):
-    return np.clip(a * np.log10(e / reference_energy) + b, min_y, 1)
-
-
-class SimplifiedXENONSource(XENONSource):
+class PolynomialXENONSource(XENONSource):
 
     def quanta_to_photons_electrons(self, energies, n_quanta):
         if not isinstance(energies, np.ndarray):
@@ -95,20 +91,6 @@ class SimplifiedXENONSource(XENONSource):
         electrons_produced = np.random.binomial(n_quanta, p=p_becomes_electron, size=len(energies))
         return n_quanta - electrons_produced, electrons_produced
 
-    def p_electron(self, energy):
-        c = self.config
-        rt = c['recoil_type']
-        return _f(energy,
-                  c[rt + '_p_electron_a'],
-                  c[rt + '_p_electron_b'],
-                  c[rt + '_reference_energy'],
-                  c.get(rt + '_p_electron_min', 0))
-
-    def p_detectable(self, energy):
-        c = self.config
-        assert c['recoil_type'] == 'nr'
-        return _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['nr_reference_energy'])
-
     def mean_signal(self, energy):
         """Utility function which returns the mean location in (cs1, cs2) at a given energy"""
         c = self.config
@@ -121,6 +103,47 @@ class SimplifiedXENONSource(XENONSource):
         cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1)
         cs1_mean = nph_mean * c['ph_detection_efficiency'] * (1 + c['double_pe_emission_probability'])
         return cs1_mean, cs2_mean
+
+    def p_electron(self, energy):
+        return self.poly_function('p_electron', energy)
+
+    def p_detectable(self, energy):
+        assert self.config['recoil_type'] == 'nr'
+        return self.poly_function('p_detectable', energy)
+
+    def poly_function(self, key, energy, minimum=0, maximum=1):
+        c = self.config
+        coeffs = c['%s_%s' % (c['recoil_type'], c['key'])]
+        ref_e = c['%s_reference_energy' % c['recoil_type']]
+        result = 0
+        for i in range(len(coeffs)):
+            result += (energy - ref_e)**i
+        return np.clip(result, minimum, maximum)
+
+
+class SimplifiedXENONSource(PolynomialXENONSource):
+
+    def __init__(self, *args, **kwargs):
+        print("SimplifiedXENONSource is deprecated and will be removed soon. Use PolynomialXENONSource instead")
+        super().__init__(*args, **kwargs)
+
+    def p_electron(self, energy):
+        c = self.config
+        rt = c['recoil_type']
+        return self._f(energy,
+                       c[rt + '_p_electron_a'],
+                       c[rt + '_p_electron_b'],
+                       c[rt + '_reference_energy'],
+                       c.get(rt + '_p_electron_min', 0))
+
+    def p_detectable(self, energy):
+        c = self.config
+        assert c['recoil_type'] == 'nr'
+        return self._f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['nr_reference_energy'])
+
+    @staticmethod
+    def _f(e, a, b, reference_energy, min_y=0):
+        return np.clip(a * np.log10(e / reference_energy) + b, min_y, 1)
 
 
 class RegularXENONSource(XENONSource):
