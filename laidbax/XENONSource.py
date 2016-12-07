@@ -113,11 +113,11 @@ class PolynomialXENONSource(XENONSource):
 
     def poly_function(self, key, energy, minimum=0, maximum=1):
         c = self.config
-        coeffs = c['%s_%s' % (c['recoil_type'], c['key'])]
-        ref_e = c['%s_reference_energy' % c['recoil_type']]
+        rt = c['recoil_type']
+        ref_e = c['%s_reference_energy' % rt]
         result = 0
-        for i in range(len(coeffs)):
-            result += (energy - ref_e)**i
+        for i in range(c['%s_poly_order' % rt]):
+            result += c['%s_%s_%d' % (rt, key, i)] * (energy - ref_e)**i
         return np.clip(result, minimum, maximum)
 
 
