@@ -41,6 +41,7 @@ def simulate_signals(config, n_photons, n_electrons, energies=None):
         ('cs1', np.float),
         ('cs2', np.float),
     ])
+    #if n = 0, do not procede:
 
     if energies is not None:
         d['energy'] = energies
