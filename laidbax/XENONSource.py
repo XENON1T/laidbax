@@ -34,6 +34,8 @@ class XENONSource(MonteCarloSource):
         """Simulate n_events from this source."""
         n_events = int(n_events)
         c = self.config
+        if n_events==0:
+            return simulate_signals(c,[],[],None)
 
         energies = self.energy_distribution.get_random(n_events)
 
