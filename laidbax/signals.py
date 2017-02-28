@@ -120,7 +120,7 @@ def simulate_signals(config, n_photons, n_electrons, energies=None,
     if c.get('s1_peak_detection_efficiency'):
         eff = np.array(c['s1_peak_detection_efficiency'])
         d = d[np.random.random(len(d)) <
-              np.clip(d['s1_photons_detected'], 0, len(eff) - 1)]
+              eff[np.clip(d['s1_photons_detected'], 0, len(eff) - 1)]]
 
     d['csratio'] = d['cs2']/d['cs1']
 

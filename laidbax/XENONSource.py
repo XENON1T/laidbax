@@ -118,8 +118,9 @@ class PolynomialXENONSource(XENONSource):
             nq_mean *= self.p_detectable(energy)
         ne_mean = nq_mean * self.p_electron(energy)
         nph_mean = nq_mean - ne_mean
-        cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1)
-        cs1_mean = nph_mean * c['ph_detection_efficiency'] * (1 + c['double_pe_emission_probability'])
+        p_dpe = c['double_pe_emission_probability']
+        cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1) * p_dpe
+        cs1_mean = nph_mean * c['ph_detection_efficiency'] * (1 + p_dpe)
         return cs1_mean, cs2_mean
 
     def p_electron(self, energy):
