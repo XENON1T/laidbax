@@ -1,5 +1,6 @@
 import numpy as np
 
+from scipy.interpolate import interp1d
 from blueice.source import MonteCarloSource
 from blueice.utils import InterpolateAndExtrapolate1D
 from multihist import Hist1d
@@ -10,6 +11,8 @@ from .signals import simulate_signals
 class XENONSource(MonteCarloSource):
     """A Source in a XENON-style experiment"""
     energy_distribution = None  # Histdd of rate /kg /keV /day.
+    s1_bias = None      # Interpolator for S1 bias as a function of detected photons
+    s2_bias = None      # Interpolator for S2 bias as a function of detected photons
 
     def __init__(self, config, *args, **kwargs):
         # Defaults for config settings
@@ -20,13 +23,25 @@ class XENONSource(MonteCarloSource):
     def compute_pdf(self):
         # Turn the energy spectrum from two arrays into a histogram, so we can sample it.
         # We average the rates in between the points provided
-        es, rates = self.config['energy_distribution']
-        h = self.energy_distribution = Hist1d(bins=es)
-        self.energy_distribution.histogram = 0.5 * (rates[1:] + rates[:-1])
+        ed_format = self.config.get('energy_distribution_format', 'old')
+        if ed_format == 'old':
+            es, rates = self.config['energy_distribution']
+            rates = np.array(rates)
+            h = self.energy_distribution = Hist1d(bins=es)
+            self.energy_distribution.histogram = 0.5 * (rates[1:] + rates[:-1])
+        elif ed_format == 'hist1d':
+            self.energy_distribution = h = self.config['energy_distribution']
+        else:
+            raise NotImplementedError("Dude, what's %s for an energy spectrum format?" % ed_format)
 
         # Compute the integrated event rate (in events / day)
         # This includes all events that produce a recoil; many will probably be out of range of the analysis space.
         self.events_per_day = h.histogram.sum() * self.config['fiducial_mass'] * (h.bin_edges[1] - h.bin_edges[0])
+
+        if 's1_bias_file' in self.config:
+            self.s1_bias = interp1d(*self.config['s1_bias_file'], bounds_error='extrapolate', kind='nearest')
+        if 's2_bias_file' in self.config:
+            self.s2_bias = interp1d(*self.config['s2_bias_file'], bounds_error='extrapolate', kind='nearest')
 
         super().compute_pdf()
 
@@ -55,7 +70,8 @@ class XENONSource(MonteCarloSource):
         photons_produced[bad_events] *= 0
         electrons_produced[bad_events] *= 0
 
-        d = simulate_signals(c, photons_produced, electrons_produced, energies)
+        d = simulate_signals(c, photons_produced, electrons_produced, energies,
+                             s1_bias=self.s1_bias, s2_bias=self.s2_bias)
 
         return d
 
@@ -117,7 +133,10 @@ class PolynomialXENONSource(XENONSource):
         ref_e = c['%s_reference_energy' % rt]
         result = 0
         for i in range(c['%s_poly_order' % rt]):
-            result += c['%s_%s_%d' % (rt, key, i)] * (energy - ref_e)**i
+            if self.config.get('function_of_log_energy', False):
+                result += c['%s_%s_%d' % (rt, key, i)] * (np.log10(energy / ref_e))**i
+            else:
+                result += c['%s_%s_%d' % (rt, key, i)] * (energy - ref_e)**i
         return np.clip(result, minimum, maximum)
 
 
