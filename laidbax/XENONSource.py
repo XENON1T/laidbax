@@ -134,6 +134,9 @@ class PolynomialXENONSource(XENONSource):
         rt = c['recoil_type']
         ref_e = c['%s_reference_energy' % rt]
         result = 0
+        max_energy = c.get('%s_max_response_energy' % rt, float('inf'))
+        min_energy = c.get('%s_min_response_energy' % rt, 0)
+        energy = np.clip(energy, min_energy, max_energy)
         for i in range(c['%s_poly_order' % rt]):
             if self.config.get('function_of_log_energy', False):
                 result += c['%s_%s_%d' % (rt, key, i)] * (np.log10(energy / ref_e))**i
