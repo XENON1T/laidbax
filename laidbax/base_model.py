@@ -89,10 +89,16 @@ config = dict(
     fiducial_mass=1000,  # kg. np.pi * rmax**2 * (zmax - zmin) * density?
     e_lifetime=pax_config['DEFAULT']['electron_lifetime_liquid'],
     v_drift=pax_config['DEFAULT']['drift_velocity_liquid'],
-    s2_gain= 30 / 1.15,           #pax_config['WaveformSimulator']['s2_secondary_sc_gain'],
-    ph_detection_efficiency= 0.147 / 1.15,       #pax_config['WaveformSimulator']['s1_detection_efficiency'],
+
+    s2_gain= 31.44 / 1.15,           # 31.44 from xenon:xenon1t:analysis:subgroup:energyscale:g1g2firstresult_summarynote_2#g2_total
+
+    ph_detection_efficiency= 0.146 / 1.15,       # 0.146 from note referenced above, 1.15 for double pe emission.
+
     pmt_gain_width=0.5,  # Width (in photoelectrons) of the single-photoelectron area spectrum
-    double_pe_emission_probability=0.15,  # Probability for a photon detected by a PMT to produce two photoelectrons.
+
+    double_pe_emission_probability=0.15,  # Probability for a photon detected by a PMT to produce two photoelectrons. From https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:aalbers:double_pe_emission
+
+    electron_extraction_efficiency = 0.907,     # From https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:analysis:subgroup:energyscale:g1g2firstresult_summarynote_2#non-linearity_correction
 
     # For sampling of light and charge yield in space
     n_location_samples=int(1e5),  # Number of samples to take for the source positions (for light yield etc, temporary?)
@@ -104,6 +110,7 @@ config = dict(
 
     # S1/S2 generation parameters
     base_quanta_yield=73,  # NEST's basic quanta yield, xenon:xenon1t:sim:notes:marco:conversion-ed-to-s1-s2
+
     # Fano factor for smearing of the base quanta yield
     # xenon:xenon1t:sim:notes:marco:conversion-ed-to-s1-s2 and xenon:xenon1t:sim:notes:marco:t2-script-description,
     # ultimately taken from the NEST code
