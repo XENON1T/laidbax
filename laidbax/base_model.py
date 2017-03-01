@@ -35,7 +35,7 @@ er_ignore_settings += ['nr_p_detectable_%d' % i for i in range(10)]
 
 
 config = dict(
-    default_source_class=RegularXENONSource,
+    default_source_class=PolynomialXENONSource,
     data_dirs=[os.path.join(THIS_DIR, 'data'), '.'],
     analysis_space=(('cs1', tuple(np.linspace(0, 70, 70))),
                     ('cs2', tuple(np.linspace(0, 7000, 70)))),
@@ -77,8 +77,8 @@ config = dict(
          'label': '50 GeV WIMP'}
     ],
 
-    # Thresholds on uncorrected S1/S2: for comparison with the Bologna model at low WIMP masses
-    s1_area_threshold=3,
+    # Areatthresholds on uncorrected S1/S2
+    s1_area_threshold=0,    # Efficiency operates on coincidence, not area
     s2_area_threshold=150,
 
     # Bias (primarily due to self-trigger)
@@ -121,54 +121,29 @@ config = dict(
     s1_peak_detection_efficiency = ( 0.    ,  0.    ,  0.    ,  0.5135,  0.787 ,  0.851 ,  0.9165,
                                      0.9255,  0.9415,  0.948 ,  0.9545,  0.961 ,  0.972 ,  0.987 ,
                                      0.9865,  0.9845,  0.9865,  0.993 ,  0.992 ,  0.9905, 1),
-)
 
-# Simplified model config
-simplified_config = deepcopy(config)
-simplified_config.update(dict(
-    default_source_class=SimplifiedXENONSource,
-    er_reference_energy=10,
-    er_p_electron_a=-0.44,
-    er_p_electron_b=0.32,
-    er_p_electron_min=0.23,
-    p_er_electron_fluctuation=0.03,
-
-    nr_reference_energy=50,
-    nr_p_electron_a=-0.2,
-    nr_p_electron_b=0.4,
-    nr_p_detectable_a=0.04,
-    nr_p_detectable_b=0.163,
-    p_nr_electron_fluctuation=0,
-))
-
-poly_config = deepcopy(config)
-poly_config.update(dict(
-    default_source_class=PolynomialXENONSource,
-    er_reference_energy=7,   # keV
-    er_poly_order=2,         # Order of n means n + 1 terms
-    er_p_electron_0=0.5,     # Value at reference energy
-    er_p_electron_1=-0.3,    # Slope " " "
-    er_p_electron_2=0,       # Second derivative " " "
+    # Fit to XENON1T Rn220 data - February 28
+    er_reference_energy=10,          # keV
+    er_poly_order=3,                 # CAUTION: order of n means n terms (so polynomial order n-1...)
+    er_p_electron_0=0.3839,          # Value at reference energy
+    er_p_electron_1=-0.3,            # Slope " " "
+    er_p_electron_2=0.0897,          # Second derivative " " "
+    er_max_response_energy=11.62766,
     p_er_electron_fluctuation=0.04,
 
-    nr_reference_energy=25,  # keV
-    nr_poly_order=2,         # Order of n means n + 1 terms
-    nr_p_electron_0=0.336,   # Value at reference energy
-    nr_p_electron_1=-0.34,   # Slope " " "
-    nr_p_electron_2=0,       # Second derivative " ' "
+    # Fit to XENON1T AmBe data - March 1, 14:24
+    nr_reference_energy=100,        # keV
+    nr_poly_order=3,                # CAUTION Order of n means n + 1 terms
+    nr_p_electron_0=0.1609,         # Value at reference energy
+    nr_p_electron_1=-0.2625,        # Slope " " "
+    nr_p_electron_2=-0.0156,        # Second derivative " ' "
+
+    # These are not fitted, just something that matches the LUX tritium lines
+    nr_p_detectable_0=0.21,
+    nr_p_detectable_1=0.02,
+    nr_p_detectable_2=0,
+
     p_nr_electron_fluctuation=0.02,
-))
+    function_of_log_energy = True,
 
-
-# Regular model config
-config.update(dict(
-    leff='leff_mcpaper_0.csv',
-    qy='qy_bezrukov.csv',
-    er_photon_yield='beta_photon_yield_nest_500V.csv',
-    nr_photon_yield_field_quenching=0.95,  # Monte Carlo note: add ref!
-    reference_gamma_photon_yield=63.4,  # NEST For 122... keV gamma, from MC note (add ref!)
-
-    # Recombination fluctuation, from LUX tritium paper (p.9) / Atilla Dobii's thesis
-    # If I don't misunderstand, they report an extra sigma/mu on the probability of a quantum to end up as an electron.
-    recombination_fluctuation=0.067,
-))
+)
