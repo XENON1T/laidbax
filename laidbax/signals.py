@@ -35,6 +35,7 @@ def simulate_signals(config, n_photons, n_electrons, energies=None,
         ('electrons_produced', np.int),
         ('photons_produced', np.int),
         ('electrons_detected', np.int),
+        ('electron_lifetime', np.float),
         ('s1_photons_detected', np.int),
         ('s1_photoelectrons_produced', np.int),
         ('s1', np.float),
@@ -67,8 +68,12 @@ def simulate_signals(config, n_photons, n_electrons, energies=None,
 
     # Get the light & charge collection efficiency
     d['p_photon_detected'] = c['ph_detection_efficiency'] * rel_lys
+    if 'e_lifetime_hist' in c:
+        d['electron_lifetime'] = c['e_lifetime_hist'].get_random(len(d))
+    else:
+        d['electron_lifetime'] = c['electron_lifetime']
     d['p_electron_detected'] = c.get('electron_extraction_efficiency', 1) * \
-                               np.exp(d['z'] / c['v_drift'] / c['e_lifetime'])  # No minus: z is negative
+                               np.exp(d['z'] / c['v_drift'] / d['electron_lifetime'])  # No minus: z is negative
 
     # S1 detection
     # The S1 bias will be taken to affect the probability of detecting a photon.
@@ -90,12 +95,6 @@ def simulate_signals(config, n_photons, n_electrons, energies=None,
     if s2_bias is not None:
         mean_s2_photons_detected *= (1 + s2_bias(mean_s2_photons_detected))
     d['s2'] = np.random.poisson(mean_s2_photons_detected)
-
-    # S1 response
-
-
-    # Apply the data acquisition & processing bias
-    # It is assumed here this acts uniformly on all areas, while in reality its dominant contributing is
 
     # Get the corrected S1 and S2, assuming our posrec + correction map is perfect
     # Note this does NOT assume the analyst knows the absolute photon detection efficiency:
