@@ -90,11 +90,14 @@ config = dict(
     e_lifetime=pax_config['DEFAULT']['electron_lifetime_liquid'],
     v_drift=pax_config['DEFAULT']['drift_velocity_liquid'],
 
-    s2_gain= 31.44 / 1.15,           # 31.44 from xenon:xenon1t:analysis:subgroup:energyscale:g1g2firstresult_summarynote_2#g2_total
+    # 31.44 from xenon:xenon1t:analysis:subgroup:energyscale:g1g2firstresult_summarynote_2#g2_total
+    # 1.15 for double-pe emission
+    #  (10.70/11.46) for non-linearity (the note above computes only the bottom S2 gain).
+    s2_gain= 31.44 / 1.15 * (10.70/11.46),
 
-    ph_detection_efficiency= 0.146 / 1.15,       # 0.146 from note referenced above, 1.15 for double pe emission.
+    ph_detection_efficiency= 0.152 / 1.15,       # 0.152 from note referenced above (with nonlinearity correction), 1.15 for double pe emission.
 
-    pmt_gain_width=0.5,  # Width (in photoelectrons) of the single-photoelectron area spectrum
+    pmt_gain_width=0.4181,   # Width (in photoelectrons) of the single-photoelectron area spectrum. Median(gain_sigma)/Median(gains) of TPC PMTs
 
     double_pe_emission_probability=0.15,  # Probability for a photon detected by a PMT to produce two photoelectrons. From https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:aalbers:double_pe_emission
 
