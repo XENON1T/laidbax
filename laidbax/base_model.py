@@ -105,11 +105,11 @@ config = dict(
 
     # For sampling of light and charge yield in space
     n_location_samples=int(1e5),  # Number of samples to take for the source positions (for light yield etc, temporary?)
-    fiducial_volume_radius=pax_config['DEFAULT']['tpc_radius'] * 0.9,
+    fiducial_volume_radius= 39.85,
     # Note z is negative, so the maximum z is actually the z of the top boundary of the fiducial volume
-    fiducial_volume_zmax=- 0.05 * pax_config['DEFAULT']['tpc_length'],
-    fiducial_volume_zmin=- 0.95 * pax_config['DEFAULT']['tpc_length'],
-    s1_relative_ly_map='s1_lce_rz_precomputed_kr83m_sep29_doublez.pkl',
+    fiducial_volume_zmax= -83.45,
+    fiducial_volume_zmin= -13.45,
+    s1_relative_ly_map='s1_lce_rz_precomputed_kr83m_sep29_doublez.pkl',     # TODO: Update for new LCE map
 
     # S1/S2 generation parameters
     base_quanta_yield=73,  # NEST's basic quanta yield, xenon:xenon1t:sim:notes:marco:conversion-ed-to-s1-s2
