@@ -1,5 +1,6 @@
 import numpy as np
 
+from scipy.interpolate import interp1d
 from blueice.source import MonteCarloSource
 from blueice.utils import InterpolateAndExtrapolate1D
 from multihist import Hist1d
@@ -10,6 +11,8 @@ from .signals import simulate_signals
 class XENONSource(MonteCarloSource):
     """A Source in a XENON-style experiment"""
     energy_distribution = None  # Histdd of rate /kg /keV /day.
+    s1_bias = None      # Interpolator for S1 bias as a function of detected photons
+    s2_bias = None      # Interpolator for S2 bias as a function of detected photons
 
     def __init__(self, config, *args, **kwargs):
         # Defaults for config settings
@@ -20,13 +23,25 @@ class XENONSource(MonteCarloSource):
     def compute_pdf(self):
         # Turn the energy spectrum from two arrays into a histogram, so we can sample it.
         # We average the rates in between the points provided
-        es, rates = self.config['energy_distribution']
-        h = self.energy_distribution = Hist1d(bins=es)
-        self.energy_distribution.histogram = 0.5 * (rates[1:] + rates[:-1])
+        ed_format = self.config.get('energy_distribution_format', 'old')
+        if ed_format == 'old':
+            es, rates = self.config['energy_distribution']
+            rates = np.array(rates)
+            h = self.energy_distribution = Hist1d(bins=es)
+            self.energy_distribution.histogram = 0.5 * (rates[1:] + rates[:-1])
+        elif ed_format == 'hist1d':
+            self.energy_distribution = h = self.config['energy_distribution']
+        else:
+            raise NotImplementedError("Dude, what's %s for an energy spectrum format?" % ed_format)
 
         # Compute the integrated event rate (in events / day)
         # This includes all events that produce a recoil; many will probably be out of range of the analysis space.
         self.events_per_day = h.histogram.sum() * self.config['fiducial_mass'] * (h.bin_edges[1] - h.bin_edges[0])
+
+        if 's1_bias_file' in self.config:
+            self.s1_bias = interp1d(*self.config['s1_bias_file'], bounds_error='extrapolate', kind='nearest')
+        if 's2_bias_file' in self.config:
+            self.s2_bias = interp1d(*self.config['s2_bias_file'], bounds_error='extrapolate', kind='nearest')
 
         super().compute_pdf()
 
@@ -57,7 +72,8 @@ class XENONSource(MonteCarloSource):
         photons_produced[bad_events] *= 0
         electrons_produced[bad_events] *= 0
 
-        d = simulate_signals(c, photons_produced, electrons_produced, energies)
+        d = simulate_signals(c, photons_produced, electrons_produced, energies,
+                             s1_bias=self.s1_bias, s2_bias=self.s2_bias)
 
         return d
 
@@ -65,11 +81,7 @@ class XENONSource(MonteCarloSource):
         raise NotImplementedError
 
 
-def _f(e, a, b, reference_energy, min_y=0):
-    return np.clip(a * np.log10(e / reference_energy) + b, min_y, 1)
-
-
-class SimplifiedXENONSource(XENONSource):
+class PolynomialXENONSource(XENONSource):
 
     def quanta_to_photons_electrons(self, energies, n_quanta):
         if not isinstance(energies, np.ndarray):
@@ -97,20 +109,6 @@ class SimplifiedXENONSource(XENONSource):
         electrons_produced = np.random.binomial(n_quanta, p=p_becomes_electron, size=len(energies))
         return n_quanta - electrons_produced, electrons_produced
 
-    def p_electron(self, energy):
-        c = self.config
-        rt = c['recoil_type']
-        return _f(energy,
-                  c[rt + '_p_electron_a'],
-                  c[rt + '_p_electron_b'],
-                  c[rt + '_reference_energy'],
-                  c.get(rt + '_p_electron_min', 0))
-
-    def p_detectable(self, energy):
-        c = self.config
-        assert c['recoil_type'] == 'nr'
-        return _f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['nr_reference_energy'])
-
     def mean_signal(self, energy):
         """Utility function which returns the mean location in (cs1, cs2) at a given energy"""
         c = self.config
@@ -120,9 +118,57 @@ class SimplifiedXENONSource(XENONSource):
             nq_mean *= self.p_detectable(energy)
         ne_mean = nq_mean * self.p_electron(energy)
         nph_mean = nq_mean - ne_mean
-        cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1)
-        cs1_mean = nph_mean * c['ph_detection_efficiency'] * (1 + c['double_pe_emission_probability'])
+        p_dpe = c['double_pe_emission_probability']
+        cs2_mean = ne_mean * c['s2_gain'] * c.get('electron_extraction_efficiency', 1) * (1 + p_dpe)
+        cs1_mean = nph_mean * c['ph_detection_efficiency'] * (1 + p_dpe)
         return cs1_mean, cs2_mean
+
+    def p_electron(self, energy):
+        return self.poly_function('p_electron', energy)
+
+    def p_detectable(self, energy):
+        assert self.config['recoil_type'] == 'nr'
+        return self.poly_function('p_detectable', energy)
+
+    def poly_function(self, key, energy, minimum=0, maximum=1):
+        c = self.config
+        rt = c['recoil_type']
+        ref_e = c['%s_reference_energy' % rt]
+        result = 0
+        max_energy = c.get('%s_max_response_energy' % rt, float('inf'))
+        min_energy = c.get('%s_min_response_energy' % rt, 0)
+        energy = np.clip(energy, min_energy, max_energy)
+        for i in range(c['%s_poly_order' % rt]):
+            if self.config.get('function_of_log_energy', False):
+                result += c['%s_%s_%d' % (rt, key, i)] * (np.log10(energy / ref_e))**i
+            else:
+                result += c['%s_%s_%d' % (rt, key, i)] * (energy - ref_e)**i
+        return np.clip(result, minimum, maximum)
+
+
+class SimplifiedXENONSource(PolynomialXENONSource):
+
+    def __init__(self, *args, **kwargs):
+        print("SimplifiedXENONSource is deprecated and will be removed soon. Use PolynomialXENONSource instead")
+        super().__init__(*args, **kwargs)
+
+    def p_electron(self, energy):
+        c = self.config
+        rt = c['recoil_type']
+        return self._f(energy,
+                       c[rt + '_p_electron_a'],
+                       c[rt + '_p_electron_b'],
+                       c[rt + '_reference_energy'],
+                       c.get(rt + '_p_electron_min', 0))
+
+    def p_detectable(self, energy):
+        c = self.config
+        assert c['recoil_type'] == 'nr'
+        return self._f(energy, c['nr_p_detectable_a'], c['nr_p_detectable_b'], c['nr_reference_energy'])
+
+    @staticmethod
+    def _f(e, a, b, reference_energy, min_y=0):
+        return np.clip(a * np.log10(e / reference_energy) + b, min_y, 1)
 
 
 class RegularXENONSource(XENONSource):

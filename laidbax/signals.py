@@ -1,7 +1,8 @@
 import numpy as np
 
 
-def simulate_signals(config, n_photons, n_electrons, energies=None):
+def simulate_signals(config, n_photons, n_electrons, energies=None,
+                     s1_bias=None, s2_bias=None):
     """Simulate results due to n_photons and n_electrons produced. Returns numpy structured array.
     energies is not used, but will be included in the results for your convenience if you pass it.
 
@@ -34,12 +35,14 @@ def simulate_signals(config, n_photons, n_electrons, energies=None):
         ('electrons_produced', np.int),
         ('photons_produced', np.int),
         ('electrons_detected', np.int),
+        ('electron_lifetime', np.float),
         ('s1_photons_detected', np.int),
         ('s1_photoelectrons_produced', np.int),
         ('s1', np.float),
         ('s2', np.float),
         ('cs1', np.float),
         ('cs2', np.float),
+        ('csratio', np.float),
     ])
     #if n = 0, do not procede:
 
@@ -65,23 +68,33 @@ def simulate_signals(config, n_photons, n_electrons, energies=None):
 
     # Get the light & charge collection efficiency
     d['p_photon_detected'] = c['ph_detection_efficiency'] * rel_lys
+    if 'e_lifetime_hist' in c:
+        d['electron_lifetime'] = c['e_lifetime_hist'].get_random(len(d))
+    else:
+        d['electron_lifetime'] = c['electron_lifetime']
     d['p_electron_detected'] = c.get('electron_extraction_efficiency', 1) * \
-                               np.exp(d['z'] / c['v_drift'] / c['e_lifetime'])  # No minus: z is negative
+                               np.exp(d['z'] / c['v_drift'] / d['electron_lifetime'])  # No minus: z is negative
 
-    # Detection efficiency
-    d['s1_photons_detected'] = np.random.binomial(d['photons_produced'], d['p_photon_detected'])
-    d['electrons_detected'] = np.random.binomial(d['electrons_produced'], d['p_electron_detected'])
-
-    # S2 amplification
-    d['s2'] = np.random.poisson(d['electrons_detected'] * c['s2_gain'])
-
-    # S1 response
+    # S1 detection
+    # The S1 bias will be taken to affect the probability of detecting a photon.
+    mean_s1_photons_detected = d['photons_produced'] * d['p_photon_detected']
+    s1_bias_factor = 1
+    if s1_bias is not None:
+        s1_bias_factor = 1 + s1_bias(mean_s1_photons_detected)
+    d['s1_photons_detected'] = np.random.binomial(d['photons_produced'], d['p_photon_detected'] * s1_bias_factor)
     d['s1_photoelectrons_produced'] = d['s1_photons_detected'] + np.random.binomial(d['s1_photons_detected'],
                                                                                     c['double_pe_emission_probability'])
     d['s1'] = np.random.normal(d['s1_photoelectrons_produced'],
                                np.clip(c['pmt_gain_width'] * np.sqrt(d['s1_photoelectrons_produced']),
                                        1e-9,   # Normal freaks out if sigma is 0...
                                        float('inf')))
+    # S2 detection
+    # The S2 bias will be taken to affect the mean number of photoelectrons detected.
+    d['electrons_detected'] = np.random.binomial(d['electrons_produced'], d['p_electron_detected'])
+    mean_s2_photons_detected = d['electrons_detected'] * c['s2_gain'] * (1 + c['double_pe_emission_probability'])
+    if s2_bias is not None:
+        mean_s2_photons_detected *= (1 + s2_bias(mean_s2_photons_detected))
+    d['s2'] = np.random.poisson(mean_s2_photons_detected)
 
     # Get the corrected S1 and S2, assuming our posrec + correction map is perfect
     # Note this does NOT assume the analyst knows the absolute photon detection efficiency:
@@ -101,5 +114,13 @@ def simulate_signals(config, n_photons, n_electrons, energies=None):
     if c.get('require_s2', True):
         d = d[d['electrons_detected'] >= 1]
         d = d[d['s2'] > c.get('s2_area_threshold', 0)]
+
+    # Apply the S1 detection efficiency from waveform simulation (if given)
+    if c.get('s1_peak_detection_efficiency'):
+        eff = np.array(c['s1_peak_detection_efficiency'])
+        d = d[np.random.random(len(d)) <
+              eff[np.clip(d['s1_photons_detected'], 0, len(eff) - 1)]]
+
+    d['csratio'] = d['cs2']/d['cs1']
 
     return d
