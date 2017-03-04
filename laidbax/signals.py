@@ -71,7 +71,7 @@ def simulate_signals(config, n_photons, n_electrons, energies=None,
     if 'e_lifetime_hist' in c:
         d['electron_lifetime'] = c['e_lifetime_hist'].get_random(len(d))
     else:
-        d['electron_lifetime'] = c['electron_lifetime']
+        d['electron_lifetime'] = c['e_lifetime']
     d['p_electron_detected'] = c.get('electron_extraction_efficiency', 1) * \
                                np.exp(d['z'] / c['v_drift'] / d['electron_lifetime'])  # No minus: z is negative
 
