@@ -90,10 +90,7 @@ config = dict(
     e_lifetime=pax_config['DEFAULT']['electron_lifetime_liquid'],
     v_drift=pax_config['DEFAULT']['drift_velocity_liquid'],
 
-    # 31.44 from xenon:xenon1t:analysis:subgroup:energyscale:g1g2firstresult_summarynote_2#g2_total
-    # 1.15 for double-pe emission
-    #  (10.70/11.46) for non-linearity (the note above computes only the bottom S2 gain).
-    s2_gain= 31.44 / 1.15 * (10.70/11.46),
+    s2_gain=30 * (1 + 0.0267)/1.15,
 
     ph_detection_efficiency= 0.152 / 1.15,       # 0.152 from note referenced above (with nonlinearity correction), 1.15 for double pe emission.
 
@@ -125,24 +122,24 @@ config = dict(
                                      0.9255,  0.9415,  0.948 ,  0.9545,  0.961 ,  0.972 ,  0.987 ,
                                      0.9865,  0.9845,  0.9865,  0.993 ,  0.992 ,  0.9905, 1),
 
-    # Fit to XENON1T Rn220 data - February 28
-    er_reference_energy=10,          # keV
+    # Fit to XENON1T Rn220 data - March 9 16:00
+    er_reference_energy=5,          # keV
     er_poly_order=3,                 # CAUTION: order of n means n terms (so polynomial order n-1...)
-    er_p_electron_0=0.3839,          # Value at reference energy
-    er_p_electron_1=-0.3,            # Slope " " "
-    er_p_electron_2=0.0897,          # Second derivative " " "
-    er_max_response_energy=11.62766,
-    p_er_electron_fluctuation=0.04,
+    er_p_electron_0=0.496,          # Value at reference energy
+    er_p_electron_1=-0.394,            # Slope " " "
+    er_p_electron_2=0.1922,          # Second derivative " " "
+    er_max_response_energy=12,
+    p_er_electron_fluctuation=0.0492,
 
-    # Fit to XENON1T AmBe data - March 1, 14:24
-    nr_reference_energy=100,        # keV
+    # Fit to XENON1T AmBe data - March 9, 19:30
+    nr_reference_energy=10,        # keV
     nr_poly_order=3,                # CAUTION Order of n means n + 1 terms
-    nr_p_electron_0=0.1609,         # Value at reference energy
-    nr_p_electron_1=-0.2625,        # Slope " " "
-    nr_p_electron_2=-0.0156,        # Second derivative " ' "
+    nr_p_electron_0=0.4183,         # Value at reference energy
+    nr_p_electron_1=-0.2321,        # Slope " " "
+    nr_p_electron_2=-0.053112,        # Second derivative " ' "
 
     # These are not fitted, just something that matches the LUX tritium lines
-    nr_p_detectable_0=0.21,
+    nr_p_detectable_0=0.19,
     nr_p_detectable_1=0.02,
     nr_p_detectable_2=0,
 
