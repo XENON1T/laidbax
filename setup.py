@@ -11,7 +11,7 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 requirements = open('requirements.txt').read().splitlines()
 
 setup(name='laidbax',
-      version='0.2.0',
+      version='0.3.0',
       description='Statistical XENON1T Analysis for the lazy analyst.',
       long_description=readme + '\n\n' + history,
       author='Jelle Aalbers',
