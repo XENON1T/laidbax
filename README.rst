@@ -30,6 +30,7 @@ All of the hard work is done by `blueice <https://github.com/JelleAalbers/blueic
 
 The default model includes lots of information I obtained by curve-tracing plots or even just constructing some function that looked like what I saw in an image. Just saying...
 
+**NB: These are NOT the official XENON1T models used for the first results paper (https://arxiv.org/abs/1705.06655)**.
 
 Installation
 ============
