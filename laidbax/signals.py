@@ -1,5 +1,27 @@
 import numpy as np
 
+sim_events_dtype = [
+    ('source', np.int),
+    # Set here:
+    ('energy', np.float),
+    ('r2', np.float),
+    ('theta', np.float),
+    ('z', np.float),
+    ('p_photon_detected', np.float),
+    ('p_electron_detected', np.float),
+    ('electrons_produced', np.int),
+    ('photons_produced', np.int),
+    ('electrons_detected', np.int),
+    ('electron_lifetime', np.float),
+    ('s1_photons_detected', np.int),
+    ('s1_photoelectrons_produced', np.int),
+    ('s1', np.float),
+    ('s2', np.float),
+    ('cs1', np.float),
+    ('cs2', np.float),
+    ('csratio', np.float),
+]
+
 
 def simulate_signals(config, n_photons, n_electrons, energies=None,
                      s1_bias=None, s2_bias=None):
@@ -23,27 +45,7 @@ def simulate_signals(config, n_photons, n_electrons, energies=None,
     n_events = len(n_photons)
 
     # Store everything in a structured array:
-    d = np.zeros(n_events, dtype=[
-        ('source', np.int),
-        # Set here:
-        ('energy', np.float),
-        ('r2', np.float),
-        ('theta', np.float),
-        ('z', np.float),
-        ('p_photon_detected', np.float),
-        ('p_electron_detected', np.float),
-        ('electrons_produced', np.int),
-        ('photons_produced', np.int),
-        ('electrons_detected', np.int),
-        ('electron_lifetime', np.float),
-        ('s1_photons_detected', np.int),
-        ('s1_photoelectrons_produced', np.int),
-        ('s1', np.float),
-        ('s2', np.float),
-        ('cs1', np.float),
-        ('cs2', np.float),
-        ('csratio', np.float),
-    ])
+    d = np.zeros(n_events, dtype=sim_events_dtype)
     #if n = 0, do not procede:
 
     if energies is not None:

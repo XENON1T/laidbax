@@ -39,9 +39,9 @@ def GetI(erec, Mchi, mred, Mnucleus):
     mred - reduced mass (GeV)
     Mnucleus - mass of target nucleus (I think; GeV?)
     """
-    vsun = 232.0 # Solar velocity in km/s
-    vinf = 220.0 # Asymptotic velocity of local system in km/s
-    vesc = 544.0 # Galactic escape velocity In km/s
+    vsun = 232.0  # Solar velocity in km/s
+    vinf = 220.0  # Asymptotic velocity of local system in km/s
+    vesc = 544.0  # Galactic escape velocity In km/s
 
     neta = vsun / vinf # Unitless
     z = vesc / vinf # Unitless
