@@ -215,9 +215,13 @@ class PickledHistogramSource(HistogramPdfSource):
     def simulate(self, n_events):
         d_simple = HistogramPdfSource.simulate(self, n_events)
 
-        # Add zeros for the metadata fields, so we can concatenate these events with those from other sources
+        # Add the metadata fields, so we can concatenate these events with those from other sources
         d = np.zeros(len(d_simple), dtype=sim_events_dtype)
         for field_name in d_simple.dtype.fields.keys():
             d[field_name] = d_simple[field_name]
+
+        # Put random z to ensure we can study effects of having wrong electron lifetime
+        c = self.config
+        d['z'] = np.random.uniform(c['fiducial_volume_zmin'], c['fiducial_volume_zmax'], size=n_events)
 
         return d

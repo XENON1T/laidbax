@@ -7,6 +7,7 @@ Maybe INI files or something...
 import os
 import inspect
 import numpy as np
+from pax import units
 
 from pax.configuration import load_configuration
 pax_config = load_configuration('XENON1T')
@@ -84,7 +85,7 @@ config = dict(
          'name': 'anomalous',
          'label': 'Anomalous flat component'},
 
-        {'energy_distribution': 'wimp_{mass}gev_1e-45cm2.csv',
+        {'energy_distribution': 'wimp_50gev_1e-45cm2.csv',
          'recoil_type': 'nr',
          'extra_dont_hash_settings': nr_ignore_settings,
          'n_events_for_pdf': 5e6,
@@ -102,9 +103,9 @@ config = dict(
     s2_bias='x1t_s2_bias_Feb26.csv',
 
     # Detector parameters
-    fiducial_mass=1000,  # kg. np.pi * rmax**2 * (zmax - zmin) * density?
-    e_lifetime=pax_config['DEFAULT']['electron_lifetime_liquid'],
-    v_drift=pax_config['DEFAULT']['drift_velocity_liquid'],
+    fiducial_mass=1042,  # kg. np.pi * rmax**2 * (zmax - zmin) * density?
+    e_lifetime=452 * units.us,
+    v_drift=1.44 * units.m/units.ms,
 
     # Probability for a photon detected by a PMT to produce two photoelectrons.
     # From https://xecluster.lngs.infn.it/dokuwiki/doku.php?id=xenon:xenon1t:aalbers:double_pe_emission
