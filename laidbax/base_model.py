@@ -21,6 +21,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe(
 nr_ignore_settings = ['er_reference_energy', 'er_max_response_energy', 'er_poly_order',
                       'p_er_electron_fluctuation', 'function_of_log_energy']
 nr_ignore_settings += ['er_qy_%d' % i for i in range(10)]
+nr_ignore_settings += ['er_qy_pca_' + x for x in ['pre_scale', 'pre_mean', 'components', 'post_scale', 'post_mean']]
 
 # Ignore these if you're an ER source:
 er_ignore_settings = 'lindhard_k drift_field p_nr_electron_fluctuation'.split() + [
@@ -150,9 +151,30 @@ config = dict(
     er_reference_energy=5,          # keV
     er_max_response_energy=12,
     er_poly_order=3,                # CAUTION: order of n means n terms (so polynomial order n-1...)
-    er_qy_0=33.4,
-    er_qy_1=-28.6,
-    er_qy_2=12,
+
+    # The ER photon yield curve is specified by normalized components after PCA.
+    # For example, setting er_qy_0 = 1 would let the first principal component deviate by 1 sigma.
+    # If you include these as shape parameters in the likelihood, you should include a standard Gaussian prior.
+    # Explained variance ratios for the components: 61%, 29%, 10%
+    er_qy_0=0,
+    er_qy_1=0,
+    er_qy_2=0,
+    # Here are the coefficients for the PCA and the normalization before and after applying the PCA
+    # You don't want to vary these in the likelihood: vary the principal components instead.
+    er_qy_pca_pre_mean=(32.76563692411, -28.596063202932, 11.056352981377),
+    er_qy_pca_pre_scale=(0.3130702629971761, 1.0798434211853436, 3.6735099987287),
+    er_qy_pca_components=((0.675836442108, -0.4438463035414, -0.5884263440315),
+                          (-0.0717491188356, -0.8341781153427, 0.5468079515054),
+                          (-0.733551066704, -0.32733366877829234, -0.5956135507358589)),
+    er_qy_pca_post_mean=(0, 0, 0),
+    er_qy_pca_post_scale=(1.3542658302463, 0.9341862046254, 0.5415350368300),
+    # These are the best-fit polynomial coefficients (corresponding to all principal components = 0)
+    # If you comment out all the PCA stuff, you could work with these directly.
+    # However, that would be a bad idea unless you include the correlation between these variables in the likelihood.
+    # er_qy_0=33.4,
+    # er_qy_1=-28.6,
+    # er_qy_2=12,
+
     p_er_electron_fluctuation=0.045,
     function_of_log_energy=True,
 

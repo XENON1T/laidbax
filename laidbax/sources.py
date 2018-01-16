@@ -136,11 +136,29 @@ class PolynomialXENONSource(XENONSource):
         max_energy = c.get('%s_max_response_energy' % rt, float('inf'))
         min_energy = c.get('%s_min_response_energy' % rt, 0)
         energy = np.clip(energy, min_energy, max_energy)
-        for i in range(c['%s_poly_order' % rt]):
+
+        # Get polynomial order and coefficients
+        order = c['%s_poly_order' % rt]
+        coefs = np.array([c['%s_%s_%d' % (rt, key, i)] for i in range(order)])
+
+        if '%s_%s_pca_components' % (rt, key) in c:
+            # The coefficients specified are not ordinary polynomial coefficients, but normalized PCA factors.
+            # We must recover the poly coeffs by un-applying PCA and the normalization before and after PCA
+            # Note 'pre' scale was applied before PCA, 'post' after, so to recover original coefs,
+            # we must un-apply post-scale first
+            coefs = coefs * np.array(c['%s_%s_pca_post_scale' % (rt, key)]) + \
+                    np.array(c['%s_%s_pca_post_mean' % (rt, key)])
+            coefs = np.dot(coefs, np.array(c['%s_%s_pca_components' % (rt, key)]))
+            coefs = coefs * np.array(c['%s_%s_pca_pre_scale' % (rt, key)]) +\
+                    np.array(c['%s_%s_pca_pre_mean' % (rt, key)])
+
+        for i in range(order):
             if self.config.get('function_of_log_energy', False):
-                result += c['%s_%s_%d' % (rt, key, i)] * (np.log10(energy / ref_e))**i
+                x = np.log10(energy / ref_e)
             else:
-                result += c['%s_%s_%d' % (rt, key, i)] * (energy - ref_e)**i
+                x = (energy - ref_e)
+            result += coefs[i] * x**i
+
         return np.clip(result, minimum, maximum)
 
 
