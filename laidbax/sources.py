@@ -8,7 +8,11 @@ from .signals import simulate_signals, sim_events_dtype
 
 
 class XENONSource(MonteCarloSource):
-    """A Source in a XENON-style experiment"""
+    """A Source in a XENON-style experiment
+
+    For ER, use yields specified by a polynomial fit
+    For NR, use yields specified by the parametrization of the Lenardo et al 2015 global fit
+    """
     energy_distribution = None  # Histdd of rate /kg /keV /day.
     s1_bias = None      # Interpolator for S1 bias as a function of detected photons
     s2_bias = None      # Interpolator for S2 bias as a function of detected photons
@@ -16,33 +20,46 @@ class XENONSource(MonteCarloSource):
     def __init__(self, config, *args, **kwargs):
         # Defaults for config settings
         config.setdefault('spatial_distribution', 'uniform')
-        config['cache_attributes'] = config.get('cache_attributes', []) + ['energy_distribution']
+        config['cache_attributes'] = config.get('cache_attributes', []) + ['energy_distribution', 'recoil_type']
         super().__init__(config, *args, **kwargs)
 
     def compute_pdf(self):
-        # Turn the energy spectrum from two arrays into a histogram, so we can sample it.
-        # We average the rates in between the points provided
-        ed_format = self.config.get('energy_distribution_format', 'old')
-        if ed_format == 'old':
-            es, rates = self.config['energy_distribution']
-            rates = np.array(rates)
-            h = self.energy_distribution = Hist1d(bins=es)
-            self.energy_distribution.histogram = 0.5 * (rates[1:] + rates[:-1])
-        elif ed_format == 'hist1d':
-            self.energy_distribution = h = self.config['energy_distribution']
-        else:
-            raise NotImplementedError("Dude, what's %s for an energy spectrum format?" % ed_format)
+        self.set_e_spectrum_and_recoil_type()
+        h = self.energy_distribution
 
         # Compute the integrated event rate (in events / day)
         # This includes all events that produce a recoil; many will probably be out of range of the analysis space.
-        self.events_per_day = h.histogram.sum() * self.config['fiducial_mass'] * (h.bin_edges[1] - h.bin_edges[0])
+        self.events_per_day = np.sum(h.histogram * h.bin_volumes()) * self.config['fiducial_mass']
 
+        # Nonlinearity on S1 and S2, derived from simulated data
         if 's1_bias_file' in self.config:
             self.s1_bias = interp1d(*self.config['s1_bias_file'], bounds_error='extrapolate', kind='nearest')
         if 's2_bias_file' in self.config:
             self.s2_bias = interp1d(*self.config['s2_bias_file'], bounds_error='extrapolate', kind='nearest')
 
         super().compute_pdf()
+
+    def set_e_spectrum_and_recoil_type(self):
+        """Sets self.energy_distribution to a Hist1d containing rates per (kg kev day), self.recoil_type
+        """
+        ed_format = self.config.get('energy_distribution_format', 'old')
+        if ed_format == 'old':
+            self.energy_distribution = self._e_spectrum_from_rates(*self.config['energy_distribution'])
+        elif ed_format == 'hist1d':
+            self.energy_distribution = self.config['energy_distribution']
+        else:
+            raise NotImplementedError("Dude, what's %s for an energy spectrum format?" % ed_format)
+        self.recoil_type = self.config['recoil_type']
+
+    @staticmethod
+    def _e_spectrum_from_rates(es, rates):
+        """Turn an energy spectrum specified by differential rates at es into a Hist1d histogram, so we can sample it.
+        We average the rates in between the points provided
+        """
+        rates = np.array(rates)
+        h = Hist1d(bins=es)
+        h.histogram = 0.5 * (rates[1:] + rates[:-1])
+        return h
 
     def simulate(self, n_events):
         """Simulate n_events from this source."""
@@ -51,35 +68,72 @@ class XENONSource(MonteCarloSource):
         if n_events==0:
             return simulate_signals(c,[],[],None)
 
-        energies = self.energy_distribution.get_random(n_events)
+        # Sample energies.
+        # get_random assumes an 'events per bin' type histogram, not a PDF, so we must first convert it
+        # (for uniform bins there is no distinction)
+        events_per_energy_bin = self.energy_distribution * self.energy_distribution.bin_volumes()
+        energies = events_per_energy_bin.get_random(n_events)
 
-        # Get the mean number of "base quanta" produced
-        n_quanta = c['base_quanta_yield'] * energies
-        n_quanta = np.random.normal(n_quanta,
-                                    np.sqrt(c['base_quanta_fano_factor'] * n_quanta),
-                                    size=n_events)
-
-        # 0 or negative numbers of quanta give trouble with the later formulas.
-        # Store which events are bad, set them to 1 quanta for now, then zero these events later.
-        bad_events = n_quanta < 1
-        n_quanta = np.clip(n_quanta, 1, float('inf'))
-
-        n_quanta = np.round(n_quanta).astype(np.int32)
-        photons_produced, electrons_produced = self.quanta_to_photons_electrons(energies, n_quanta)
-
-        # "Remove" bad events (see above); actual removal happens at the very end of the function
-        photons_produced[bad_events] *= 0
-        electrons_produced[bad_events] *= 0
+        photons_produced, electrons_produced = self.yields(energies)
 
         d = simulate_signals(c, photons_produced, electrons_produced, energies,
                              s1_bias=self.s1_bias, s2_bias=self.s2_bias)
 
         return d
 
+    def yields(self, energies):
+        """Sample arrays of (photons produced, electrons produced) for events at energies
+        :param energies: array of energies of events to sample
+        """
+        if not isinstance(energies, np.ndarray):
+            energies = np.ones(1) * energies
+        n_events = len(energies)
+
+        # Get the mean number of "base quanta" produced
+        c = self.config
+        n_quanta = c['base_quanta_yield'] * energies
+        nonzero = n_quanta > 0
+        n_quanta[nonzero] = np.random.normal(n_quanta[nonzero],
+                                             np.sqrt(c['base_quanta_fano_factor'] * n_quanta[nonzero]))
+
+        # 0 or negative numbers of quanta give trouble with the later formulas.
+        # Store which events are bad, set them to 1 quanta for now, then zero the yields for these events later.
+        bad_events = n_quanta < 1
+        n_quanta = np.clip(n_quanta, 1, float('inf'))
+        n_quanta = np.round(n_quanta).astype(np.int32)
+
+        c = self.config
+        if self.recoil_type == 'nr':
+            # Account for quanta getting lost as heat
+            p_detectable = self.p_detectable(energies)
+            n_quanta = np.random.binomial(n_quanta, p_detectable)
+
+        # Simple lin-log model of probability of becoming an electron
+        p_becomes_electron = self.p_electron(energies)
+
+        # Extra fluctuation (according to LUX, due to fluctuation in recombination probability)
+        fluctuation = c['p_%s_electron_fluctuation' % self.recoil_type]
+        if fluctuation != 0:
+            p_becomes_electron = np.random.normal(p_becomes_electron, fluctuation)
+        p_becomes_electron = np.clip(p_becomes_electron, 0, 1)
+
+        # Sample the actual numbers binomially
+        # The size argument is explicitly needed to always get an array back (even when simulating one event)
+        electrons_produced = np.random.binomial(np.clip(n_quanta, 0, None),
+                                                p=p_becomes_electron,
+                                                size=len(energies))
+        photons_produced = n_quanta - electrons_produced
+
+        # "Remove" bad events (see above); actual removal happens at the end of simulate_signals
+        photons_produced[bad_events] *= 0
+        electrons_produced[bad_events] *= 0
+
+        return photons_produced, electrons_produced
+
     def mean_signal(self, energy):
         """Utility function which returns the mean location in (cs1, cs2) at a given energy"""
         c = self.config
-        rt = c['recoil_type']
+        rt = self.recoil_type
         nq_mean = c['base_quanta_yield'] * energy
         if rt == 'nr':
             nq_mean *= self.p_detectable(energy)
@@ -90,51 +144,33 @@ class XENONSource(MonteCarloSource):
         cs1_mean = nph_mean * c['ph_detection_efficiency'] * (1 + p_dpe)
         return cs1_mean, cs2_mean
 
-    def quanta_to_photons_electrons(self, energies, n_quanta):
-        if not isinstance(energies, np.ndarray):
-            energies = np.ones(1) * energies
-            n_quanta = np.ones(1) * n_quanta
-
-        c = self.config
-        rt = c['recoil_type']
-        if rt == 'nr':
-            # Account for quanta getting lost as heat
-            p_detectable = self.p_detectable(energies)
-            n_quanta = np.random.binomial(n_quanta, p_detectable)
-
-        # Simple lin-log model of probability of becoming an electron
-        p_becomes_electron = self.p_electron(energies)
-
-        # Extra fluctuation (according to LUX due to fluctuation in recombination probability)
-        fluctuation = c['p_%s_electron_fluctuation' % rt]
-        if fluctuation != 0:
-            p_becomes_electron = np.random.normal(p_becomes_electron, fluctuation)
-        p_becomes_electron = np.clip(p_becomes_electron, 0, 1)
-
-        # Sample the actual numbers binomially
-        # The size argument is explicitly needed to always get an array back (even when simulating one event)
-        electrons_produced = np.random.binomial(n_quanta, p=p_becomes_electron, size=len(energies))
-        return n_quanta - electrons_produced, electrons_produced
-
-
-class PolynomialXENONSource(XENONSource):
-
     def p_electron(self, energy):
+        """Probability a produced quantum becomes an electron at a given energy"""
+        if self.recoil_type == 'nr':
+            n_ph, n_el = self.nest_yields(energy)
+            return n_el / (n_ph + n_el)
         return self.poly_function('qy', energy, minimum=0, maximum=self.config['base_quanta_yield']
                                   ) / self.config['base_quanta_yield']
 
     def p_detectable(self, energy):
-        assert self.config['recoil_type'] == 'nr'
-        return self.poly_function('ty', energy, minimum=0, maximum=self.config['base_quanta_yield']
-                                  ) / self.config['base_quanta_yield']
+        """Probability a produced quantum becomes a photon at a given energy"""
+        assert self.recoil_type == 'nr'
+        n_ph, n_el = self.nest_yields(energy)
+        return (n_el + n_ph) / (energy * self.config['base_quanta_yield'])
 
     def poly_function(self, key, energy, minimum=0, maximum=1):
+        """Evaluate polynomial function of energy from configuration variables
+        :param key: Key in configuration. Will look for rt_key_xxx variables (except min and max energy)
+        :param energy: Energies to evaluate function at
+        :param minimum: Minimum output of function (clips result)
+        :param maximum: Maximum output of function (clips result)
+        :returns: array of same length as energy: result of polynomial function
+        """
         c = self.config
-        rt = c['recoil_type']
+        rt = self.recoil_type
         ref_e = c['%s_reference_energy' % rt]
-        result = 0
-        max_energy = c.get('%s_max_response_energy' % rt, float('inf'))
         min_energy = c.get('%s_min_response_energy' % rt, 0)
+        max_energy = c.get('%s_max_response_energy' % rt, float('inf'))
         energy = np.clip(energy, min_energy, max_energy)
 
         # Get polynomial order and coefficients
@@ -152,6 +188,7 @@ class PolynomialXENONSource(XENONSource):
             coefs = coefs * np.array(c['%s_%s_pca_pre_scale' % (rt, key)]) +\
                     np.array(c['%s_%s_pca_pre_mean' % (rt, key)])
 
+        result = 0
         for i in range(order):
             if self.config.get('function_of_log_energy', False):
                 x = np.log10(energy / ref_e)
@@ -161,24 +198,12 @@ class PolynomialXENONSource(XENONSource):
 
         return np.clip(result, minimum, maximum)
 
-
-class NRGlobalFitSource(XENONSource):
-    """ER and NR yields according to the NEST global fit
-
-    Specify drift field in V/cm
-    """
-
-    def p_electron(self, energy):
-        n_ph, n_el = self.nest_yields(energy)
-        return n_el / (n_ph + n_el)
-
-    def p_detectable(self, energy):
-        n_ph, n_el = self.nest_yields(energy)
-        return (n_el + n_ph) / (energy * self.config['base_quanta_yield'])
-
     def nest_yields(self, energy):
+        """NR yields according to the Lenardo et al 2015 global fit.
+        Returns (array of produced photons, array of produced electrons)
+        """
         c = self.config
-        assert c['recoil_type'] == 'nr'
+        assert self.recoil_type == 'nr'
 
         Z = 54  # charge of Xenon
         W = 1/c['base_quanta_yield']   # 13.7e-3
@@ -211,7 +236,42 @@ class NRGlobalFitSource(XENONSource):
         return n_ph, n_el
 
 
+class WIMPSource(XENONSource):
+    """Source of signals of WIMP-nucleus recoils using the wimprates package from
+    https://github.com/JelleAalbers/wimprates
+
+    Be careful when specifying settings to ignore: depending on the detection mechanism, this could be ER or NR...
+    """
+
+    def set_e_spectrum_and_recoil_type(self):
+        self.recoil_type = dict(elastic_nr='nr', bremsstrahlung='er')[self.config['wimp_detection_mechanism']]
+
+        try:
+            from wimprates import rate_wimp
+        except ImportError:
+            print("Please install the wimprates library from https://github.com/JelleAalbers/wimprates")
+            raise
+        import numericalunits as nu
+
+        es = np.array(self.config['wimp_energies'])
+
+        rates = rate_wimp(es * nu.keV,
+                          mw=self.config['wimp_mass'] * nu.GeV/nu.c0**2,
+                          sigma_nucleon=self.config['wimp_sigma_nucleon'] * nu.cm**2,
+                          detection_mechanism=self.config['wimp_detection_mechanism'],
+                          interaction=self.config['wimp_interaction'])
+        rates /= (nu.kg**-1 * nu.day**-1 * nu.keV**-1)
+
+        # Cutoff spectrum at low energies
+        rates[es <= self.config['wimp_%s_response_cutoff' % self.recoil_type]] = 0
+
+        self.energy_distribution = self._e_spectrum_from_rates(es, rates)
+
+
 class PickledHistogramSource(HistogramPdfSource):
+    """Load source from a file with pickled histograms
+    Ad-hoc thing constructed to load XENON SR0 data-driven models in a ROOT-free way
+    """
 
     def build_histogram(self):
         # with open(self.config['source_data'], mode='rb') as infile:

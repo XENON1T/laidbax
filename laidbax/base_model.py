@@ -12,10 +12,14 @@ from pax import units
 from pax.configuration import load_configuration
 pax_config = load_configuration('XENON1T')
 
-from .sources import PolynomialXENONSource, PickledHistogramSource, NRGlobalFitSource
+from .sources import XENONSource, PickledHistogramSource, WIMPSource
 
 # Store the directory of this file
 THIS_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+# Ignore these if you're not a WIMP
+notwimp_ignore_settings = ['wimp_sigma_nucleon', 'wimp_detection_mechanism', 'wimp_interaction', 'wimp_mass',
+                           'wimp_energies', 'wimp_nr_response_cutoff', 'wimp_er_response_cutoff']
 
 # Ignore these if you're an NR source:
 nr_ignore_settings = ['er_reference_energy', 'er_max_response_energy', 'er_poly_order',
@@ -29,7 +33,7 @@ er_ignore_settings = 'lindhard_k drift_field p_nr_electron_fluctuation'.split() 
 ]
 
 config = dict(
-    default_source_class=NRGlobalFitSource,
+    default_source_class=XENONSource,
     data_dirs=[os.path.join(THIS_DIR, 'data'), '.'],
     analysis_space=(('cs1', tuple(np.linspace(3, 70, 68))),
                     ('cs2', tuple(np.logspace(*np.log10([50, 8000]), num=71)))),
@@ -42,11 +46,10 @@ config = dict(
     # Basic model info
     sources=[
         {'energy_distribution': 'er_bg.csv',
-         'class': PolynomialXENONSource,
          'events_per_day': 620/34.2,
          'rate_multiplier': 1.157,  # Scale to SR0 expectation. Too lazy to modify the er_bg.csv.. will
          'recoil_type': 'er',
-         'extra_dont_hash_settings': er_ignore_settings,
+         'extra_dont_hash_settings': er_ignore_settings + notwimp_ignore_settings,
          'n_events_for_pdf': 1e7,
          'color': 'blue',
          'name': 'er',
@@ -54,14 +57,14 @@ config = dict(
 
         {'energy_distribution': 'cnns.csv',
          'recoil_type': 'nr',
-         'extra_dont_hash_settings': nr_ignore_settings,
+         'extra_dont_hash_settings': nr_ignore_settings + notwimp_ignore_settings,
          'n_events_for_pdf': 5e6,
          'color': 'orange',
          'name': 'cnns',
          'label': 'CNNS'},
         {'energy_distribution': 'radiogenic_neutrons.csv',
          'recoil_type': 'nr',
-         'extra_dont_hash_settings': nr_ignore_settings,
+         'extra_dont_hash_settings': nr_ignore_settings + notwimp_ignore_settings,
          'n_events_for_pdf': 55e6,
          'color': 'purple',
          'name': 'radiogenics',
@@ -87,13 +90,22 @@ config = dict(
          'label': 'Anomalous flat component'},
 
         {'energy_distribution': 'wimp_50gev_1e-45cm2.csv',
+         'class': WIMPSource,
+         'wimp_energies': tuple(np.logspace(-1, 1, 50).tolist() + np.linspace(10, 60, 51)[1:].tolist()),
          'recoil_type': 'nr',
-         'extra_dont_hash_settings': nr_ignore_settings,
          'n_events_for_pdf': 5e6,
          'color': 'red',
          'name': 'wimp',
          'label': '50 GeV WIMP'}
     ],
+
+    # WIMP parameters
+    wimp_sigma_nucleon=1e-45,         # cm**2
+    wimp_detection_mechanism='elastic_nr',
+    wimp_interaction='SI',
+    wimp_mass=50,                     # Gev/c^2
+    wimp_nr_response_cutoff=1,        # keV. Energy below which no NR response is assumed for the WIMP signal.
+    wimp_er_response_cutoff=0.18,     # keV. Energy below which no ER response is assumed for the WIMP signal.
 
     # Area thresholds on uncorrected S1/S2
     s1_area_threshold=0,    # Efficiency operates on coincidence, not area
