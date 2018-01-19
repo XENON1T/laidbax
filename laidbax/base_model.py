@@ -173,13 +173,13 @@ config = dict(
     er_qy_2=0,
     # Here are the coefficients for the PCA and the normalization before and after applying the PCA
     # You don't want to vary these in the likelihood: vary the principal components instead.
-    er_qy_pca_pre_mean=(32.76563692411, -28.596063202932, 11.056352981377),
-    er_qy_pca_pre_scale=(0.3130702629971761, 1.0798434211853436, 3.6735099987287),
-    er_qy_pca_components=((0.675836442108, -0.4438463035414, -0.5884263440315),
-                          (-0.0717491188356, -0.8341781153427, 0.5468079515054),
-                          (-0.733551066704, -0.32733366877829234, -0.5956135507358589)),
+    er_qy_pca_pre_mean=(32.5070584, -27.69486517, 15.0427901),
+    er_qy_pca_pre_scale=(0.289709323, 1.027015330, 3.239578508),
+    er_qy_pca_components=((0.693707206, -0.398337247, -0.600081452),
+                          (-0.03686758676, -0.851694742, 0.522739750),
+                          (0.71931293, 0.340504777, 0.60551251)),
     er_qy_pca_post_mean=(0, 0, 0),
-    er_qy_pca_post_scale=(1.3542658302463, 0.9341862046254, 0.5415350368300),
+    er_qy_pca_post_scale=(1.32333778, 0.973308940, 0.549041719),
     # These are the best-fit polynomial coefficients (corresponding to all principal components = 0)
     # If you comment out all the PCA stuff, you could work with these directly.
     # However, that would be a bad idea unless you include the correlation between these variables in the likelihood.
