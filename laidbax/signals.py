@@ -110,7 +110,7 @@ def simulate_signals(config, n_photons, n_electrons, energies=None,
     # Remove events without an S1 or S1
     if c.get('require_s1', True):
         # One photons detected doesn't count as an S1 (since it isn't distinguishable from a dark count)
-        d = d[d['s1_photons_detected'] >= 2]
+        d = d[d['s1_photons_detected'] >= c.get('s1_min_photons_detected', 3)]
         d = d[d['s1'] > c.get('s1_area_threshold', 0)]
 
     if c.get('require_s2', True):

@@ -111,6 +111,9 @@ config = dict(
     s1_area_threshold=0,    # Efficiency operates on coincidence, not area
     s2_area_threshold=150,
 
+    # Coincidence requirement on S1
+    s1_min_photons_detected = 3,
+
     # Bias (primarily due to self-trigger)
     s1_bias='x1t_s1_bias_Feb26.csv',
     s2_bias='x1t_s2_bias_Feb26.csv',
