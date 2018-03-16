@@ -9,9 +9,6 @@ import inspect
 import numpy as np
 from pax import units
 
-from pax.configuration import load_configuration
-pax_config = load_configuration('XENON1T')
-
 from .sources import XENONSource, PickledHistogramSource, WIMPSource
 
 # Store the directory of this file
