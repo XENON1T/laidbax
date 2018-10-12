@@ -97,6 +97,8 @@ def simulate_signals(config, n_photons, n_electrons, energies=None,
     if s2_bias is not None:
         mean_s2_photons_detected *= (1 + s2_bias(mean_s2_photons_detected))
     d['s2'] = np.random.poisson(mean_s2_photons_detected)
+    # This only produces integers... add uniform(-0.5, .5) to prevent binning artifacts
+    d['s2'] += np.random.rand(len(d['s2'])) - 0.5
 
     # Get the corrected S1 and S2, assuming our posrec + correction map is perfect
     # Note this does NOT assume the analyst knows the absolute photon detection efficiency:
